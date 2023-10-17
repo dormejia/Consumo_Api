@@ -1,0 +1,177 @@
+@page "/clientes"
+@using BlazorApp.Data
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@inject IHttpClientFactory ClientFactory
+
+<h1>Call web API from a Blazor Server Razor component</h1>
+
+@if (getBranchesError || branches is null)
+{
+    <p>Unable to get branches from GitHub. Please try again later.</p>
+}
+else
+{
+    <form>
+         <label  for="lbl_id" class="form-label">ID</label>
+         <input @bind="var_idcliente" type="text" class="form-control" id="exampleFormControlInput1" placeholder="ID"  readonly>
+
+         <label  for="lbl_nombres" class="form-label">Nombres</label>
+         <input @bind="var_nombres" type="text" class="form-control" id="exampleFormControlInput1" placeholder="Nombres" >
+
+          <label for="lbl_apellidos" class="form-label">Apellidos</label>
+         <input @bind="var_apellidos" type="text" class="form-control" id="exampleFormControlInput1" placeholder="Apellidos" >
+
+          <label for="lbl_direccion" class="form-label">Direccion</label>
+         <input @bind="var_direccion" type="text" class="form-control" id="exampleFormControlInput1" placeholder="Direccion" >
+
+          <label for="lbl_telefono" class="form-label">Telefono</label>
+         <input @bind="var_telefono" type="number" class="form-control" id="exampleFormControlInput1" placeholder="# Telefono" >
+
+          <label for="lbl_fecha" class="form-label">Fecha de Nacimiento</label>
+         <input @bind="var_fchNaci" type="date" class="form-control" id="exampleFormControlInput1" >
+    <br>
+
+
+
+         <button type="button" @onclick="crear" class="btn btn-info">Crear</button>
+         <button type="button" @onclick="modificar" class="btn btn-success">Modificar</button>
+         <button type="button" @onclick="eliminar" class="btn btn-danger">Eliminar</button>
+         <input class="form-check-input" @onclick="(()=>Limpiar())" type="checkbox" value="" id="flexCheckDefault">
+  <label class="form-check-label" for="flexCheckDefault">Limpiar Pantalla</label>
+
+    </form>
+
+    <table class="table" >
+        <tbody>
+            <tr>
+                
+                <th>Nombres</th>
+                <th>Apellidos</th>
+                <th>Direccion</th>
+                <th>Telefono</th>
+                <th>Fecha de Nacimiento</th>
+            </tr>
+        </tbody>
+    
+        @foreach (var branch in branches)
+        {   <tr>
+           <td><button type="button" @onclick="(()=>enviarparametros(branch.Id,branch.Nombres,branch.Apellidos,branch.Direccion,branch.Telefono,branch.Fecha))" class="btn btn-info"><i class="oi oi-pencil"></i></button></td>
+            <td>@branch.Nombres</td>
+            <td>@branch.Apellidos</td>
+            <td>@branch.Direccion</td>
+            <td>@branch.Telefono</td>
+            <td>@branch.Fecha</td>
+
+            </tr>
+        }
+    
+     </table>
+}
+
+@code {
+private string? url="https://localhost:7068/api/Clientes";
+private Int32 var_idcliente;
+private string? var_nombres,var_apellidos,var_direccion,var_telefono;
+private DateTime? var_fchNaci;
+
+void enviarparametros(Int32 id ,string? nom,string? ape,string? direc,string? tel,DateTime? fech){
+var_idcliente=id;
+var_nombres=nom;
+var_apellidos=ape;
+var_direccion=direc;
+var_telefono=tel;
+var_fchNaci=fech;
+}
+void Limpiar(){
+var_idcliente=0;
+var_nombres="";
+var_apellidos="";
+var_direccion="";
+var_telefono="";
+var_fchNaci=null;
+}
+//crear
+private async Task crear()
+    {
+         var client = ClientFactory.CreateClient();
+        var addItem = new GitHubBranch  { Nombres=var_nombres,Apellidos=var_apellidos,Direccion=var_direccion,Telefono= var_telefono,Fecha=var_fchNaci };
+        await client.PostAsJsonAsync(url, addItem);
+        await OnInitializedAsync();// refresca automaticamente la tabla
+
+    }
+    // modificar
+    private async Task modificar()
+    {
+         var client = ClientFactory.CreateClient();
+        var addItem = new GitHubBranch  {Id=var_idcliente, Nombres=var_nombres,Apellidos=var_apellidos,Direccion=var_direccion,Telefono= var_telefono,Fecha=var_fchNaci };
+        await client.PutAsJsonAsync($"{url}/{var_idcliente}", addItem);
+        await OnInitializedAsync();// refresca automaticamente la tabla
+
+    }
+    //eliminar
+     private async Task eliminar()
+    {
+         var client = ClientFactory.CreateClient();
+        var addItem = new GitHubBranch  {Id=var_idcliente, Nombres=var_nombres,Apellidos=var_apellidos,Direccion=var_direccion,Telefono= var_telefono,Fecha=var_fchNaci };
+        await client.DeleteAsync($"{url}/{var_idcliente}");
+        await OnInitializedAsync();// refresca automaticamente la tabla
+
+    }
+
+
+    private IEnumerable<GitHubBranch>? branches = Array.Empty<GitHubBranch>();
+    private bool getBranchesError;
+    private bool shouldRender;
+
+    protected override bool ShouldRender() => shouldRender;
+//CRUD
+
+
+//MODIFICAR
+//BORRAR
+//SELECT1
+    protected override async Task OnInitializedAsync()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get,
+            url);
+        request.Headers.Add("Accept", "application/vnd.github.v3+json");
+        request.Headers.Add("User-Agent", "HttpClientFactory-Sample");
+
+        var client = ClientFactory.CreateClient();
+
+        var response = await client.SendAsync(request);
+
+        if (response.IsSuccessStatusCode)
+        {
+            using var responseStream = await response.Content.ReadAsStreamAsync();
+            branches = await JsonSerializer.DeserializeAsync
+                <IEnumerable<GitHubBranch>>(responseStream);
+        }
+        else
+        {
+            getBranchesError = true;
+        }
+
+        shouldRender = true;
+    }
+
+    public class GitHubBranch
+    {
+        [JsonPropertyName("id_cliente")]
+        public Int32 Id { get; set; }
+
+        [JsonPropertyName("nombres")]
+        public string? Nombres { get; set; }
+        [JsonPropertyName("apellidos")]
+        public string? Apellidos { get; set; }
+        [JsonPropertyName("direccion")]
+        public string? Direccion { get; set; }
+        [JsonPropertyName("telefono")]
+        public string? Telefono { get; set; }
+        [JsonPropertyName("fecha_nacimiento")]
+        public DateTime? Fecha { get; set; }
+
+         
+    }
+}
